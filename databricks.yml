@@ -1,0 +1,22 @@
+bundle:
+  name: PruebaSullair
+
+include:
+  - resources/*.yml
+
+variables:
+  environment:
+    description: "Ambiente de ejecucion: dev o prod"
+    default: "dev"
+
+targets:
+  dev:
+    mode: development
+    default: true
+    variables:
+      environment: "dev"
+
+  prod:
+    mode: production
+    variables:
+      environment: "prod"
