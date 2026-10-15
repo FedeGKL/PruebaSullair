@@ -3,17 +3,11 @@ name: CI-CD Pipeline Medallion Automático
 on:
   push:
     branches:
-      - main
-    tags:
-      - 'v*.*.*'
-
-permissions:
-  contents: write
+      - main     # Se dispara únicamente ante cambios/merge en main
 
 jobs:
   # ETAPA 1: Validación y Despliegue en DEV
   deploy-dev:
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout del repositorio
@@ -31,28 +25,18 @@ jobs:
           databricks bundle deploy -t dev
           databricks bundle run medallion_etl_job -t dev
 
-      # PASO DE AUTOMATIZACIÓN DEL TAG
-      - name: Generar y Publicar Tag Automático para Producción
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          NEW_TAG="v1.0.$(date +%s)"
-          echo "Despliegue en DEV exitoso. Creando el tag automático: $NEW_TAG"
-          git tag $NEW_TAG
-          git push origin $NEW_TAG
-
-  # ETAPA 2: Despliegue a PRODUCCIÓN
+  # ETAPA 2: Despliegue en PROD (Encadenado a DEV)
   deploy-prod:
-    if: startsWith(github.ref, 'refs/tags/v')
+    needs: deploy-dev    # <--- AQUÍ: Solo se ejecuta si 'deploy-dev' finalizó en VERDE
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout del artefacto versionado
+      - name: Checkout del repositorio
         uses: actions/checkout@v4
 
       - name: Instalar Databricks CLI
         uses: databricks/setup-cli@main
 
-      - name: Desplegar en PROD
+      - name: Validar y Desplegar en PROD
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
