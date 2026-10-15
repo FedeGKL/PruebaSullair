@@ -6,7 +6,7 @@ include:
 
 variables:
   environment:
-    description: "Ambiente de ejecucion de proceso: dev o prod"
+    description: "Ambiente de ejecucion: dev o prod"
     default: "dev"
 
 targets:
@@ -18,5 +18,7 @@ targets:
 
   prod:
     mode: production
+    workspace:
+      root_path: /Workspace/Users/kuhllamas98@hotmail.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       environment: "prod"
