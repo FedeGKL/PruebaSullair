@@ -6,7 +6,7 @@ include:
 
 variables:
   environment:
-    description: "Ambiente de ejecucion de procceso: dev o prod"
+    description: "Ambiente de ejecucion de proceso: dev o prod"
     default: "dev"
 
 targets:
