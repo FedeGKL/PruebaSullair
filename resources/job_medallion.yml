@@ -5,7 +5,7 @@ resources:
       tasks:
         - task_key: procesar_capas
           notebook_task:
-            notebook_path: ../src/procesar_medallion.py
+            notebook_path: ../src/procesar_medallion.ipynb
             base_parameters:
               environment: ${var.environment}
           new_cluster:
