@@ -1,60 +1,66 @@
-name: CI-CD Pipeline Medallion
+name: CI-CD Pipeline Medallion Automático
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - main
     tags:
-      - 'v*.*.*'
+      - 'v*.*.*' # [1, 4]
+
+permissions:
+  contents: write # [4] Permite a GitHub Actions crear y hacer push de tags automáticamente
 
 jobs:
+  # ETAPA 1: Validación y Despliegue en DEV [1-3, 5]
   deploy-dev:
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    if: github.ref == 'refs/heads/main' [1, 3, 5]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout del repositorio
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4 [1-3, 5]
 
       - name: Instalar Databricks CLI
-        uses: databricks/setup-cli@main
+        uses: databricks/setup-cli@main [2, 3, 6, 7]
 
-      - name: Validar Bundle en DEV
+      - name: Validar y Desplegar en DEV
         env:
-          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-        run: databricks bundle validate -t dev
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }} [2, 3, 6, 7]
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }} [2, 3, 6, 7]
+        run: |
+          databricks bundle validate -t dev [2, 3, 7]
+          databricks bundle deploy -t dev [7-9]
+          databricks bundle run medallion_etl_job -t dev [8-10]
 
-      - name: Desplegar Bundle a DEV
-        env:
-          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-        run: databricks bundle deploy -t dev
+      # PASO DE AUTOMATIZACIÓN DEL TAG
+      - name: Generar y Publicar Tag Automático para Producción
+        run: |
+          # 1. Configurar la identidad de Git del runner
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # 2. Generar un nombre de Tag dinámico con marca de tiempo o número de versión
+          NEW_TAG="v1.0.$(date +%s)"
+          
+          # 3. Crear el tag y enviarlo al repositorio remoto [11, 12]
+          echo "Despliegue en DEV exitoso. Creando el tag automático: $NEW_TAG"
+          git tag $NEW_TAG [11, 12]
+          git push origin $NEW_TAG [11, 12]
 
-      - name: Ejecutar Job de prueba en DEV
-        env:
-          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-        run: databricks bundle run medallion_etl_job -t dev
-
+  # ETAPA 2: Despliegue a PRODUCCIÓN (se dispara automáticamente cuando se crea el tag) [6, 8-10]
   deploy-prod:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') [6, 9, 10]
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout del repositorio
-        uses: actions/checkout@v4
+      - name: Checkout del artefacto versionado
+        uses: actions/checkout@v4 [6, 8-10]
 
       - name: Instalar Databricks CLI
-        uses: databricks/setup-cli@main
+        uses: databricks/setup-cli@main [13-16]
 
-      - name: Validar Bundle en PROD
+      - name: Desplegar en PROD
         env:
-          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-        run: databricks bundle validate -t prod
-
-      - name: Desplegar Bundle a PROD
-        env:
-          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-        run: databricks bundle deploy -t prod
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }} [13-16]
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }} [13-16]
+        run: |
+          databricks bundle validate -t prod [14-16]
+          databricks bundle deploy -t prod [14-16]
